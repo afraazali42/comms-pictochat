@@ -254,13 +254,35 @@ function appendMessage(name, text, drawing, fieldW, fieldH, isMe) {
   renderHeader(header, data);
   renderBubble(bubble, data);
 
+  // Only auto-scroll if the user was already pinned to the bottom. This way
+  // someone reading older messages — even if they're the sender themselves —
+  // won't get yanked back down. They use the ▼ button when they're ready.
+  const wasAtBottom = isAtBottom(messageLog);
+
   messageLog.appendChild(msg);
-  messageLog.scrollTop = messageLog.scrollHeight;
+
+  if (wasAtBottom) {
+    messageLog.scrollTop = messageLog.scrollHeight;
+    // Re-pin after async stroke painting may have grown the layout
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      messageLog.scrollTop = messageLog.scrollHeight;
+    }));
+  }
 
   while (messageLog.children.length > MAX_MESSAGES) {
     messageLog.removeChild(messageLog.firstChild);
   }
 }
+
+// True if the message log is scrolled to (or within a few pixels of) bottom.
+function isAtBottom(el, threshold = 6) {
+  return el.scrollHeight - el.scrollTop - el.clientHeight <= threshold;
+}
+
+// ▼ button — manual scroll to bottom
+document.getElementById('scrollBottomBtn').addEventListener('click', () => {
+  messageLog.scrollTop = messageLog.scrollHeight;
+});
 
 // Update only the header content. Used for both initial render and slideshow.
 function renderHeader(header, data) {

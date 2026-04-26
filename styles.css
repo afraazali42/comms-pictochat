@@ -89,9 +89,11 @@ body {
   font-weight: 500;
 }
 .header-name {
-  margin-left: auto;        /* push to the right end of the toolbar */
   flex: 0 1 auto;
   padding: 4px 10px;
+}
+#scrollBottomBtn {
+  margin-left: auto;        /* push self + name pill to the right end */
 }
 .header-name .name-label-text { font-size: 11px; }
 .header-name input { font-size: 12px; width: 100px; }
