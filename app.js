@@ -1,9 +1,13 @@
 // comms — pictochat prototype
-// front-end only, no networking yet.
 //
 // drawings are stored as STROKE DATA (vector), not rasterized images.
 // each stroke = { c: color, s: size, p: [[x,y], ...] } in CSS pixels.
 // massively lighter than PNGs, crisp at any size, serializes easily for P2P.
+
+// ESM imports (this script is loaded with type="module")
+// Trystero split into per-strategy packages — use @trystero-p2p/torrent
+// for BitTorrent-tracker-based signaling.
+import { joinRoom } from 'https://esm.sh/@trystero-p2p/torrent';
 
 // ------- Config -------
 const COLORS = [
@@ -197,6 +201,16 @@ function send() {
     : null;
 
   appendMessage(name, text, drawing, fieldW, fieldH, true);
+
+  // Broadcast to peers. Network failures are silent — your own message
+  // already shows up locally regardless of whether it reached anyone.
+  if (broadcastMessage) {
+    try {
+      broadcastMessage({ name, text, drawing, fieldW, fieldH });
+    } catch (err) {
+      console.warn('[comms] broadcast failed:', err);
+    }
+  }
 
   messageInput.value = '';
   clearDrawing();
@@ -445,6 +459,104 @@ window       .addEventListener('focus', () => setTimeout(ensureFocus, 0));
 
 setTimeout(ensureFocus, 80);
 sizeCanvas();
+
+// ------- Networking: discover public IP, hash to room key, join room -------
+//
+// "Same WiFi → same chatroom" works because everyone on a NAT shares the same
+// public egress IP. Each peer hashes that IP into a room key, joins via
+// Trystero (which uses public BitTorrent trackers as a free signaling layer),
+// and then chats peer-to-peer over WebRTC DataChannels.
+
+const ROOM_SALT = 'comms-pictochat-v1';
+const STUN_URL  = 'stun:stun.l.google.com:19302';
+
+// Pull our public IP from a WebRTC server-reflexive ICE candidate. No
+// third-party HTTP API needed — STUN is free, fast, and only sees the
+// minimum (the egress IP) that we'd be revealing to peers anyway.
+function getPublicIP() {
+  return new Promise((resolve, reject) => {
+    let done = false;
+    const pc = new RTCPeerConnection({ iceServers: [{ urls: STUN_URL }] });
+    pc.createDataChannel('discover');
+    pc.createOffer()
+      .then(o => pc.setLocalDescription(o))
+      .catch(reject);
+
+    pc.addEventListener('icecandidate', (e) => {
+      if (done || !e.candidate) return;
+      const cand = e.candidate.candidate || '';
+      if (!cand.includes('srflx')) return; // only server-reflexive (public) candidates
+      const m = cand.match(/(\d+\.\d+\.\d+\.\d+)/);
+      if (!m) return;
+      done = true;
+      pc.close();
+      resolve(m[1]);
+    });
+
+    setTimeout(() => {
+      if (done) return;
+      done = true;
+      pc.close();
+      reject(new Error('public IP discovery timed out'));
+    }, 5000);
+  });
+}
+
+// SHA-256(ip + salt) → 32 hex chars. The salt isn't a real privacy boundary
+// (anyone with the source can hash known IPs), but it does prevent passive
+// observation of "this room hash = this exact public IP" without effort.
+async function hashRoomKey(ip) {
+  const buf = new TextEncoder().encode(ip + '.' + ROOM_SALT);
+  const digest = await crypto.subtle.digest('SHA-256', buf);
+  return Array.from(new Uint8Array(digest))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('')
+    .slice(0, 32);
+}
+
+// Will be set to Trystero's send function once the room is joined.
+// send() checks this to broadcast outgoing messages.
+let broadcastMessage = null;
+
+(async () => {
+  try {
+    console.log('[comms] discovering public IP via STUN…');
+    const ip = await getPublicIP();
+    console.log('[comms] public IP:', ip);
+
+    const roomKey = await hashRoomKey(ip);
+    console.log('[comms] room key:', roomKey);
+
+    console.log('[comms] joining room…');
+    const room = joinRoom({ appId: 'comms-pictochat' }, roomKey);
+    window._commsRoom = room; // exposed for debugging
+
+    room.onPeerJoin((peerId) => console.log('[comms] peer joined:', peerId));
+    room.onPeerLeave((peerId) => console.log('[comms] peer left:', peerId));
+
+    // Wire a typed action channel for messages. makeAction returns
+    // [send, receive]. We just use one channel for everything for now.
+    const [sendMsg, onMsg] = room.makeAction('msg');
+    broadcastMessage = sendMsg;
+
+    onMsg((data /* , peerId */) => {
+      if (!data || typeof data !== 'object') return;
+      // Render incoming peer message — isMe = false
+      appendMessage(
+        data.name   || 'anon',
+        data.text   || '',
+        data.drawing || null,
+        data.fieldW || 480,
+        data.fieldH || 90,
+        false
+      );
+    });
+
+    console.log('[comms] joined room — waiting for peers');
+  } catch (err) {
+    console.error('[comms] networking failed:', err);
+  }
+})();
 
 // ------- Visual viewport tracking (mobile keyboard handling) -------
 // iOS Safari doesn't reliably update 100dvh when the on-screen keyboard
