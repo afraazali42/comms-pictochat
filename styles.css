@@ -28,7 +28,13 @@
 
 * { box-sizing: border-box; }
 
-html, body { margin: 0; padding: 0; min-height: 100%; }
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;          /* lock the page itself; only the message log scrolls */
+  overscroll-behavior: none; /* no rubber-band on the body */
+}
 
 body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -55,6 +61,13 @@ body {
 /* ---------- mobile / small viewport ---------- */
 @media (max-width: 600px) {
   .comms-app {
+    /* Pin the app to the visible viewport. position: fixed prevents iOS
+       from "scrolling the input into view" by pushing the rest of the
+       app off-screen — there's nothing for it to scroll, so the keyboard
+       just resizes the app instead. */
+    position: fixed;
+    top: 0;
+    left: 0;
     width: 100%;
     /* --app-h is set in JS to window.visualViewport.height so the layout
        shrinks the moment the keyboard opens — 100dvh doesn't always update
