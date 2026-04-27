@@ -58,8 +58,8 @@ body {
   border-radius: 4px;
 }
 
-/* ---------- mobile / small viewport ---------- */
-@media (max-width: 600px) {
+/* ---------- mobile / small viewport (covers phone portrait + landscape) ---------- */
+@media (max-width: 600px), (max-height: 500px) and (orientation: landscape) {
   .comms-app {
     /* Pin the app to the visible viewport. iOS scrolls the visual viewport
        independently when the keyboard opens; --app-top mirrors
@@ -83,7 +83,32 @@ body {
   .name-label input {
     font-size: 16px;
   }
-  /* compose-area aspect-ratio handles its size now — no mobile override needed */
+}
+
+/* ---------- phone landscape: side-by-side layout ----------
+   Vertical space is precious in landscape, so split horizontally:
+   messages on the left, compose stack on the right. */
+@media (max-height: 500px) and (orientation: landscape) {
+  .comms-app {
+    flex-direction: row;
+    gap: 8px;
+    padding: 6px;
+  }
+  .message-log {
+    flex: 1;
+    min-height: 0;
+    margin-bottom: 0;
+  }
+  .compose {
+    flex: 0 0 50%;
+    display: flex;
+    flex-direction: column;
+  }
+  /* push the compose-area to fill remaining vertical space below the
+     toolbar so its aspect-ratio doesn't leave dead space mid-column */
+  .compose-area {
+    margin-top: auto;
+  }
 }
 
 /* ---------- shared input pill ---------- */
