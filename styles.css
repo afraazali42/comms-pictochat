@@ -83,10 +83,7 @@ body {
   .name-label input {
     font-size: 16px;
   }
-  /* Slightly shorter compose so the message log gets more vertical space */
-  #messageInput {
-    height: 72px;
-  }
+  /* compose-area aspect-ratio handles its size now — no mobile override needed */
 }
 
 /* ---------- shared input pill ---------- */
@@ -340,6 +337,9 @@ body {
   background: #fafafa;
   border-radius: 0;
   overflow: hidden;
+  /* Lock the aspect ratio so every message — composed on phone or laptop —
+     ends up with the same shape. Width still scales to the available room. */
+  aspect-ratio: 480 / 90;
 }
 .compose-area--flash {
   box-shadow: inset 0 0 0 2px rgba(255, 80, 80, 0.6);
@@ -347,7 +347,7 @@ body {
 #messageInput {
   display: block;
   width: 100%;
-  height: 90px;
+  height: 100%;            /* fill the aspect-ratio'd parent */
   background: transparent;
   border: none;
   outline: none;
@@ -375,19 +375,24 @@ body {
   position: absolute;
   bottom: 0;
   right: 0;
+  /* Fixed pixel dimensions so the button (and the corresponding
+     play button on every message) is identical across all devices. */
+  width: 80px;
+  height: 30px;
+  padding: 0;
   background: var(--surface-3);
   color: var(--mint);
   border: 1px solid var(--border);
   border-right: none;
   border-bottom: none;
   border-radius: 0;
-  padding: 7px 18px;
   font: inherit;
   font-weight: 700;
   font-size: 13px;
   cursor: pointer;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   letter-spacing: 0.3px;
   z-index: 2;

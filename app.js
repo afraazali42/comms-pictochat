@@ -592,6 +592,9 @@ window.addEventListener('orientationchange', updateAppHeight);
 // dimensions for visual symmetry. We measure once after layout, then again
 // on resize (in case the compose area's width changed).
 function syncCornerBtnSize() {
+  // Send button is now a fixed 80×30 across all devices, but we still
+  // measure here in case the design changes — keeps the play button in
+  // lockstep with whatever the send button actually is.
   const sb = document.getElementById('sendBtn');
   if (!sb) return;
   const r = sb.getBoundingClientRect();
