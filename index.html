@@ -4,6 +4,13 @@
   <meta charset="utf-8">
   <title>comms</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- Content-Security-Policy. script-src 'self' is the high-value part: all
+       code is now same-origin (Trystero is vendored), so injected/external
+       scripts are blocked. connect-src stays permissive on wss:/stun: so the
+       rotating Nostr relay set + WebRTC keep working without enumerating them;
+       it still blocks http(s) exfiltration. style 'unsafe-inline' is required
+       for the inline styles the app sets via JS. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' wss: stun: turn: turns:; base-uri 'self'; form-action 'none'">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
